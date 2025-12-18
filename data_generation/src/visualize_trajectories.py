@@ -66,6 +66,7 @@ def compute_trajectory_stats(text: str) -> dict:
     stats = {
         "tokens": count_tokens(text),
         "parallel_ratio": None,
+        "acceleration_ratio": None,
         "num_tokens_in_the_longest_thread": None,
         "total_num_tokens": None,
         "avg_thread_length": None,
@@ -81,6 +82,8 @@ def compute_trajectory_stats(text: str) -> dict:
         stats["parallel_ratio"] = 0.0
         stats["total_num_tokens"] = stats["tokens"]
         stats["num_tokens_in_the_longest_thread"] = stats["tokens"]
+        if stats["total_num_tokens"] > 0:
+            stats["acceleration_ratio"] = 0.0
         return stats
 
     stats["total_num_tokens"] = stats["tokens"]
@@ -93,12 +96,12 @@ def compute_trajectory_stats(text: str) -> dict:
     outlines_lengths = []
     conclusion_lengths = []
     longest_thread_tokens = 0
-
-    # Add tokens before first parallel block
-    if parallel_matches:
-        longest_thread_tokens += count_tokens(text[:parallel_matches[0].start()])
+    last_end_idx = 0
 
     for match in parallel_matches:
+        # Add tokens from the non-parallel text segment before this block
+        non_parallel_segment = text[last_end_idx:match.start()]
+        longest_thread_tokens += count_tokens(non_parallel_segment)
         block_content = match.group(1)
 
         # Count tokens in block (excluding placeholders)
@@ -112,14 +115,14 @@ def compute_trajectory_stats(text: str) -> dict:
         inside_tokens += block_tokens
         parallel_block_tokens.append(count_tokens('<Parallel>' + block_without_placeholders + '</Parallel>'))
 
-        # Outlines length
-        outlines_match = re.search(r'<Outlines>.*?</Outlines>', block_content, re.DOTALL)
+        # Outlines length (include leading/trailing whitespace for accurate token counting)
+        outlines_match = re.search(r'\s*<Outlines>.*?</Outlines>\s*', block_content, re.DOTALL)
         if outlines_match:
             outlines_tokens = count_tokens(outlines_match.group(0))
             outlines_lengths.append(outlines_tokens)
 
-        # Conclusion length
-        conclusion_match = re.search(r'<Conclusion>.*?</Conclusion>', block_content, re.DOTALL)
+        # Conclusion length (include leading/trailing whitespace for accurate token counting)
+        conclusion_match = re.search(r'\s*<Conclusion>.*?</Conclusion>\s*', block_content, re.DOTALL)
         if conclusion_match:
             conclusion_tokens = count_tokens(conclusion_match.group(0))
             conclusion_lengths.append(conclusion_tokens)
@@ -146,14 +149,25 @@ def compute_trajectory_stats(text: str) -> dict:
             block_contribution += max(block_thread_tokens)
         longest_thread_tokens += block_contribution
 
-    # Add tokens after last parallel block
-    if parallel_matches:
-        longest_thread_tokens += count_tokens(text[parallel_matches[-1].end():])
+        # Update last_end_idx to track where this block ended
+        last_end_idx = match.end()
+
+    # Add tokens from the final text segment after the last parallel block
+    final_segment = text[last_end_idx:]
+    longest_thread_tokens += count_tokens(final_segment)
 
     # Calculate final stats
     if stats["total_num_tokens"] > 0:
-        stats["parallel_ratio"] = inside_tokens / stats["total_num_tokens"]
+        # Mirror computation in filter-format-correct-and-obtain-stats: empty blocks yield None.
+        stats["parallel_ratio"] = inside_tokens / stats["total_num_tokens"] if inside_tokens > 0 else None
     stats["num_tokens_in_the_longest_thread"] = longest_thread_tokens
+
+    # Calculate acceleration ratio: measures potential speedup from parallelization
+    # acceleration_ratio = 1 - (longest_thread / total_tokens)
+    # 0 = no speedup (fully sequential), higher values = more parallelization
+    if longest_thread_tokens is not None and stats["total_num_tokens"] > 0:
+        stats["acceleration_ratio"] = 1 - (longest_thread_tokens / stats["total_num_tokens"])
+
     stats["avg_thread_length"] = sum(thread_lengths) / len(thread_lengths) if thread_lengths else None
     stats["avg_tokens_per_parallel_block"] = sum(parallel_block_tokens) / len(parallel_block_tokens) if parallel_block_tokens else None
     stats["avg_threads_per_parallel_block"] = sum(parallel_block_thread_counts) / len(parallel_block_thread_counts) if parallel_block_thread_counts else None
@@ -1031,13 +1045,18 @@ function calculateStats(data) {
   const parallelRatios = data.filter(t => t.parallel_ratio !== null && t.parallel_ratio !== undefined).map(t => t.parallel_ratio);
   const avgParallelRatio = parallelRatios.length > 0 ? parallelRatios.reduce((sum, r) => sum + r, 0) / parallelRatios.length : null;
 
+  // Calculate acceleration ratio stats
+  const accelerationRatios = data.filter(t => t.acceleration_ratio !== null && t.acceleration_ratio !== undefined).map(t => t.acceleration_ratio);
+  const avgAccelerationRatio = accelerationRatios.length > 0 ? accelerationRatios.reduce((sum, r) => sum + r, 0) / accelerationRatios.length : null;
+
   return {
     total: data.length,
     totalLines, totalWords, totalChars, totalSize, totalTokens,
     avgLines, avgWords, avgChars, avgTokens,
     maxLines: Math.max(...data.map(t => t.lines)),
     minLines: Math.min(...data.map(t => t.lines)),
-    avgParallelRatio
+    avgParallelRatio,
+    avgAccelerationRatio
   };
 }
 
@@ -1073,6 +1092,14 @@ function renderStatsOverview(stats) {
       <div class="stat-label">⚡ Avg Parallel Ratio</div>
       <div class="stat-value">${(stats.avgParallelRatio * 100).toFixed(1)}%</div>
       <div class="stat-subtext">Parallelization efficiency</div>
+    </div>`);
+  }
+
+  if (stats.avgAccelerationRatio !== null) {
+    cards.push(`<div class="stat-card fade-in">
+      <div class="stat-label">🚀 Avg Acceleration Ratio</div>
+      <div class="stat-value">${(stats.avgAccelerationRatio * 100).toFixed(1)}%</div>
+      <div class="stat-subtext">Potential speedup from parallelization</div>
     </div>`);
   }
 
@@ -1169,6 +1196,14 @@ async function selectTrajectory(id) {
       data.parallel_ratio,
       'Parallel Ratio',
       'Ratio of tokens inside <Parallel> blocks to total tokens (higher = more parallelization)'
+    ));
+  }
+
+  if (data.acceleration_ratio !== null && data.acceleration_ratio !== undefined) {
+    metricsHtml.push(metricWithTooltip(
+      data.acceleration_ratio,
+      'Acceleration Ratio',
+      'Potential speedup from parallelization: 1 - (longest_thread_tokens / total_tokens). 0 = no speedup (fully sequential), higher values = more potential parallelization speedup'
     ));
   }
 
