@@ -347,7 +347,7 @@ def main() -> None:
     out_path = os.path.join(args.output_dir, out_filename)
 
     if os.path.exists(out_path) and not args.overwrite:
-        raise FileExistsError(f"Output file already exists: {out_path}. Use --overwrite to replace it.")
+        return  # Skip existing file
 
     os.makedirs(args.output_dir, exist_ok=True)
 

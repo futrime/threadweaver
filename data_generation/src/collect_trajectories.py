@@ -26,7 +26,7 @@ def main():
     collect_path = os.path.join(args.output_path, 'collected.jsonl')
     output_dir_exists = os.path.exists(args.output_path)
     if output_dir_exists and not args.overwrite:
-        raise FileExistsError(f"Output directory already exists: {args.output_path}. Use --overwrite to replace it.")
+        pass  # raise FileExistsError(f"Output directory already exists: {args.output_path}. Use --overwrite to replace it.")
     
     # Determine if we're loading from JSONL or dataset based on file extension
     if args.dataset_path.endswith('.jsonl'):
@@ -77,7 +77,10 @@ def main():
             f.write(json.dumps(d) + '\n')
 
     for i, d in enumerate(collect_data):
-        with open(os.path.join(args.output_path, f'{i}.txt'), 'w') as f:
+        txt_path = os.path.join(args.output_path, f'{i}.txt')
+        if os.path.exists(txt_path) and not args.overwrite:
+            continue
+        with open(txt_path, 'w') as f:
             f.write(d['thinking'] + '\n')
 
     print(f"Saved {len(collect_data)} samples to {collect_path} and individual text files in {args.output_path}")

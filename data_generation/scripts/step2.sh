@@ -29,11 +29,11 @@ else
     OUTPUT_DIR=${DATA_PATH}_step2_${VERSION}
 fi
 
-if [ -d "$OUTPUT_DIR" ]; then
-    echo "Output directory already exists: $OUTPUT_DIR" >&2
-    echo "Remove it or rerun with --overwrite passed to src/extract_v1.py." >&2
-    exit 1
-fi
+# if [ -d "$OUTPUT_DIR" ]; then
+#     echo "Output directory already exists: $OUTPUT_DIR" >&2
+#     echo "Remove it or rerun with --overwrite passed to src/extract_v1.py." >&2
+#     exit 1
+# fi
 
 success=0
 while IFS= read -r txtfile; do

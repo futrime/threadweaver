@@ -338,7 +338,7 @@ def main():
 
     if os.path.exists(out_dir):
         if not args.overwrite:
-            raise FileExistsError(f"Output directory already exists: {out_dir}")
+            pass  # raise FileExistsError(f"Output directory already exists: {out_dir}")
         print(f"[overwrite] existing contents may be replaced in {out_dir}")
 
     records = load_collected(args.input)

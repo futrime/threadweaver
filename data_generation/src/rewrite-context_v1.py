@@ -405,6 +405,9 @@ def process_file(
     args: argparse.Namespace = None,
 ) -> Tuple[str, bool, str]:
     """Process a single trajectory file, rewriting each <Thread> (except the first) in every <Parallel>."""
+    out_path = os.path.join(outdir, os.path.basename(filepath))
+    if os.path.exists(out_path) and args and not args.overwrite:
+        return filepath, True, ""  # Skip existing file
     try:
         with open(filepath, "r", encoding="utf-8") as f:
             text = f.read()
@@ -512,7 +515,7 @@ def main():
     args = parser.parse_args()
 
     if os.path.exists(args.output) and not args.overwrite:
-        raise FileExistsError(f"Output directory already exists: {args.output}. Use --overwrite to replace it.")
+        pass  # raise FileExistsError(f\"Output directory already exists: {args.output}. Use --overwrite to replace it.\")
     # Read instruction preamble from file
     try:
         with open(args.prompt, "r", encoding="utf-8") as f:

@@ -300,7 +300,7 @@ def main():
     # Ensure output folders exist
     for label, path in (("output", args.output), ("chat", args.chat)):
         if os.path.exists(path) and not args.overwrite:
-            raise FileExistsError(f"{label.capitalize()} directory already exists: {path}. Use --overwrite to replace it.")
+            pass  # raise FileExistsError(f"{label.capitalize()} directory already exists: {path}. Use --overwrite to replace it.")
         os.makedirs(path, exist_ok=True)
 
     logger.info(f"args: {args}")

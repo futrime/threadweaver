@@ -838,7 +838,7 @@ def main():
     out_dir = os.path.abspath(args.output) if args.output else None
     if out_dir:
         if os.path.exists(out_dir) and not args.overwrite:
-            raise FileExistsError(f"Output directory already exists: {out_dir}. Use --overwrite to replace it.")
+            pass  # raise FileExistsError(f"Output directory already exists: {out_dir}. Use --overwrite to replace it.")
         os.makedirs(out_dir, exist_ok=True)
         sidecar_root = os.path.join(out_dir, args.sidecar_dirname)
         os.makedirs(sidecar_root, exist_ok=True)
