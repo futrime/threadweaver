@@ -31,6 +31,7 @@ python "$ROOT_DIR/src/gpt.py" \
     --input "${DATA_PATH}/collected.jsonl" \
     --output "${DATA_PATH}_step1_${VERSION}/" \
     --chat "${DATA_PATH}_step1_${VERSION}/chat" \
-    --openai_model gpt-5-2025-08-07 \
+    --openai_model "${OPENAI_MODEL:-gpt-5-2025-08-07}" \
+    --use_chat_completions \
     --workers 128 \
     --skip_existing

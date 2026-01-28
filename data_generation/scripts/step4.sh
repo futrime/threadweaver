@@ -34,7 +34,8 @@ python "$ROOT_DIR/src/generate-outline_v1.py" \
   --input "${DATA_PATH}_step3_${STEP3_VERSION}${SUFFIX}" \
   --output "${DATA_PATH}_step4_${VERSION}${SUFFIX}" \
   --glob "*.txt" \
-  --openai_model gpt-5-2025-08-07 \
+  --openai_model "${OPENAI_MODEL:-gpt-5-2025-08-07}" \
+  --use_chat_completions \
   --workers 128 \
   --effort "${EFFORT:-medium}" \
   --trace "${DATA_PATH}_step4_${VERSION}${SUFFIX}/trace"

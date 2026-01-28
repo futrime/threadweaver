@@ -33,7 +33,8 @@ python "$ROOT_DIR/src/rewrite-context_v1.py" \
   --input "${DATA_PATH}_step2_${STEP2_VERSION}${SUFFIX}" \
   --output "${DATA_PATH}_step3_${VERSION}${SUFFIX}" \
   --glob "*.txt" \
-  --openai_model gpt-5-2025-08-07 \
+  --openai_model "${OPENAI_MODEL:-gpt-5-2025-08-07}" \
+  --use_chat_completions \
   --workers 128 \
   --in_cost_per_million 1.25 \
   --out_cost_per_million 10.0 \
